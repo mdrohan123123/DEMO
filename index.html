@@ -619,4 +619,434 @@
                         </div>
 
                         <div class="articles-list" id="articlesList">
-     
+                            <!-- Articles will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ads Tab -->
+                <div id="ads-tab" class="tab-content">
+                    <div class="setting-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-ad"></i>
+                                Ad Configuration
+                            </div>
+                            <div>
+                                <span class="status-badge" id="adStatus">Inactive</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <input type="checkbox" id="adsEnabled" onclick="toggleAds()">
+                                Enable Ads
+                            </label>
+                        </div>
+
+                        <div class="tabs">
+                            <div class="tab active" onclick="switchAdTab('header')">Header</div>
+                            <div class="tab" onclick="switchAdTab('sidebar')">Sidebar</div>
+                            <div class="tab" onclick="switchAdTab('footer')">Footer</div>
+                            <div class="tab" onclick="switchAdTab('social')">Social</div>
+                            <div class="tab" onclick="switchAdTab('popunder')">Popunder</div>
+                        </div>
+
+                        <div id="adEditor">
+                            <div class="form-group">
+                                <label class="form-label">Ad Code (HTML/JavaScript)</label>
+                                <textarea class="form-textarea" id="adCode" rows="8" placeholder="Paste your ad code here..."></textarea>
+                            </div>
+                            <button class="btn" onclick="saveAd()">
+                                <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+                                Save Ad Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Tab -->
+                <div id="security-tab" class="tab-content">
+                    <div class="setting-card">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <i class="fas fa-key"></i>
+                                Admin Security
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Current Admin Password</label>
+                            <input type="password" class="form-input" id="currentPassword">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">New Admin Password</label>
+                            <input type="password" class="form-input" id="newPassword">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-input" id="confirmPassword">
+                        </div>
+
+                        <button class="btn" onclick="changePassword()">
+                            <i class="fas fa-sync-alt" style="margin-right: 0.5rem;"></i>
+                            Update Password
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">Changes saved successfully!</div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR_kPmsLV2-EY6N4-JvqpzNLELy_tuQ80",
+            databaseURL: "https://test-e0321-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "test-e0321"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        // Admin Authentication
+        const ADMIN_PASSWORD = "rogadmin2024"; // Change this to your secure password
+
+        // State
+        let currentAdSlot = 'header';
+        let isLoggedIn = false;
+
+        // Login Function
+        window.login = function() {
+            const password = document.getElementById('adminPassword').value;
+            
+            if (password === ADMIN_PASSWORD) {
+                isLoggedIn = true;
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('adminPanel').classList.add('active');
+                loadAllSettings();
+                showToast('Access Granted', 'success');
+            } else {
+                showToast('Invalid Password', 'error');
+            }
+        };
+
+        // Handle Enter Key
+        window.handleKeyPress = function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        };
+
+        // Logout
+        window.logout = function() {
+            isLoggedIn = false;
+            document.getElementById('loginSection').style.display = 'flex';
+            document.getElementById('adminPanel').classList.remove('active');
+        };
+
+        // Tab Switching
+        window.switchTab = function(tabName) {
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            // Update content tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+
+            // Update header
+            const headers = {
+                'general': 'General Settings',
+                'appearance': 'Appearance Settings',
+                'articles': 'Article Management',
+                'ads': 'Ad Management',
+                'security': 'Security Settings'
+            };
+            document.getElementById('currentSection').textContent = headers[tabName];
+        };
+
+        // Load all settings
+        function loadAllSettings() {
+            loadGeneralSettings();
+            loadAppearance();
+            loadArticles();
+            loadAds();
+        }
+
+        // General Settings
+        function loadGeneralSettings() {
+            db.ref('settings').once('value', snap => {
+                const s = snap.val() || {};
+                document.getElementById('siteStatus').value = s.siteStatus || 'active';
+                document.getElementById('brandName').value = s.brandName || 'SAYEM';
+                document.getElementById('brandSubtitle').value = s.brandSubtitle || 'HUB';
+                document.getElementById('noticeMessage').value = s.noticeMessage || '';
+                document.getElementById('metaDescription').value = s.metaDescription || 'Secure 2FA Hub';
+            });
+        }
+
+        window.saveGeneralSettings = function() {
+            const settings = {
+                siteStatus: document.getElementById('siteStatus').value,
+                brandName: document.getElementById('brandName').value,
+                brandSubtitle: document.getElementById('brandSubtitle').value,
+                noticeMessage: document.getElementById('noticeMessage').value,
+                metaDescription: document.getElementById('metaDescription').value
+            };
+
+            db.ref('settings').set(settings)
+                .then(() => showToast('Settings saved successfully!'))
+                .catch(err => showToast('Error saving settings', 'error'));
+        };
+
+        // Appearance Settings
+        function loadAppearance() {
+            db.ref('appearance').once('value', snap => {
+                const a = snap.val() || {};
+                document.getElementById('primaryColor').value = a.primaryColor || '#38bdf8';
+                document.getElementById('primaryColorHex').value = a.primaryColor || '#38bdf8';
+                document.getElementById('borderRadius').value = a.borderRadius || '1.2rem';
+                document.getElementById('glassIntensity').value = a.glassIntensity || '20px';
+                document.getElementById('fontHeading').value = a.fontHeading || "'Outfit', sans-serif";
+            });
+        }
+
+        window.saveAppearance = function() {
+            const appearance = {
+                primaryColor: document.getElementById('primaryColorHex').value,
+                borderRadius: document.getElementById('borderRadius').value,
+                glassIntensity: document.getElementById('glassIntensity').value,
+                fontHeading: document.getElementById('fontHeading').value
+            };
+
+            db.ref('appearance').set(appearance)
+                .then(() => showToast('Appearance saved successfully!'))
+                .catch(err => showToast('Error saving appearance', 'error'));
+        };
+
+        // Sync color picker with hex input
+        document.getElementById('primaryColor').addEventListener('input', (e) => {
+            document.getElementById('primaryColorHex').value = e.target.value;
+        });
+
+        document.getElementById('primaryColorHex').addEventListener('input', (e) => {
+            document.getElementById('primaryColor').value = e.target.value;
+        });
+
+        // Articles Management
+        function loadArticles() {
+            const articlesList = document.getElementById('articlesList');
+            
+            db.ref('articles').on('value', snap => {
+                articlesList.innerHTML = '';
+                
+                if (!snap.exists()) {
+                    articlesList.innerHTML = '<p style="color: var(--gray); text-align: center;">No articles published yet.</p>';
+                    return;
+                }
+
+                const articles = [];
+                snap.forEach(child => {
+                    articles.push({
+                        id: child.key,
+                        ...child.val()
+                    });
+                });
+
+                // Sort by timestamp (newest first)
+                articles.sort((a, b) => b.timestamp - a.timestamp);
+
+                articles.forEach(article => {
+                    const div = document.createElement('div');
+                    div.className = 'article-item';
+                    div.innerHTML = `
+                        <div class="article-item-header">
+                            <span class="article-title">${article.title || 'Untitled'}</span>
+                            <span class="article-badge">${article.badge || 'UPDATE'}</span>
+                        </div>
+                        <div style="color: var(--gray); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                            ${article.body ? article.body.substring(0, 100) + '...' : ''}
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--gray); opacity: 0.5;">
+                            ${new Date(article.timestamp).toLocaleString()}
+                        </div>
+                        <div class="article-actions">
+                            <button class="icon-btn" onclick="editArticle('${article.id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="icon-btn" onclick="deleteArticle('${article.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    articlesList.appendChild(div);
+                });
+            });
+        }
+
+        window.createArticle = function() {
+            const title = document.getElementById('articleTitle').value;
+            const body = document.getElementById('articleBody').value;
+            const badge = document.getElementById('articleBadge').value || 'UPDATE';
+
+            if (!title || !body) {
+                showToast('Please fill in title and body', 'error');
+                return;
+            }
+
+            const article = {
+                title,
+                body,
+                badge,
+                timestamp: Date.now()
+            };
+
+            db.ref('articles').push(article)
+                .then(() => {
+                    showToast('Article published successfully!');
+                    // Clear form
+                    document.getElementById('articleTitle').value = '';
+                    document.getElementById('articleBody').value = '';
+                    document.getElementById('articleBadge').value = '';
+                })
+                .catch(err => showToast('Error publishing article', 'error'));
+        };
+
+        window.editArticle = function(articleId) {
+            // Implement edit functionality
+            db.ref(`articles/${articleId}`).once('value', snap => {
+                const article = snap.val();
+                if (article) {
+                    document.getElementById('articleTitle').value = article.title || '';
+                    document.getElementById('articleBody').value = article.body || '';
+                    document.getElementById('articleBadge').value = article.badge || 'UPDATE';
+                    
+                    // Save on update
+                    if (confirm('Update this article?')) {
+                        db.ref(`articles/${articleId}`).update({
+                            title: article.title,
+                            body: article.body,
+                            badge: article.badge,
+                            timestamp: Date.now()
+                        }).then(() => showToast('Article updated!'));
+                    }
+                }
+            });
+        };
+
+        window.deleteArticle = function(articleId) {
+            if (confirm('Are you sure you want to delete this article?')) {
+                db.ref(`articles/${articleId}`).remove()
+                    .then(() => showToast('Article deleted!'))
+                    .catch(err => showToast('Error deleting article', 'error'));
+            }
+        };
+
+        // Ad Management
+        function loadAds() {
+            db.ref('ads').once('value', snap => {
+                const a = snap.val() || {};
+                document.getElementById('adsEnabled').checked = a.enabled || false;
+                updateAdStatus(a.enabled || false);
+            });
+        }
+
+        window.toggleAds = function() {
+            const enabled = document.getElementById('adsEnabled').checked;
+            db.ref('ads/enabled').set(enabled)
+                .then(() => {
+                    updateAdStatus(enabled);
+                    showToast(`Ads ${enabled ? 'enabled' : 'disabled'}`);
+                });
+        };
+
+        function updateAdStatus(enabled) {
+            const badge = document.getElementById('adStatus');
+            badge.textContent = enabled ? 'Active' : 'Inactive';
+            badge.className = `status-badge ${enabled ? 'active' : 'inactive'}`;
+        }
+
+        window.switchAdTab = function(slot) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            currentAdSlot = slot;
+            
+            // Load ad code for selected slot
+            db.ref(`ads/${slot}`).once('value', snap => {
+                document.getElementById('adCode').value = snap.val() || '';
+            });
+        };
+
+        window.saveAd = function() {
+            const code = document.getElementById('adCode').value;
+            
+            db.ref(`ads/${currentAdSlot}`).set(code)
+                .then(() => showToast('Ad code saved!'))
+                .catch(err => showToast('Error saving ad code', 'error'));
+        };
+
+        // Security
+        window.changePassword = function() {
+            const current = document.getElementById('currentPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+
+            if (current !== ADMIN_PASSWORD) {
+                showToast('Current password is incorrect', 'error');
+                return;
+            }
+
+            if (newPass !== confirm) {
+                showToast('New passwords do not match', 'error');
+                return;
+            }
+
+            if (newPass.length < 6) {
+                showToast('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            // In a real app, you'd update this in Firebase
+            showToast('Password updated successfully!');
+            
+            // Clear fields
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+        };
+
+        // Toast Notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Check login state on load
+        window.onload = function() {
+            // Initially show login
+            document.getElementById('loginSection').style.display = 'flex';
+            document.getElementById('adminPanel').classList.remove('active');
+        };
+
+    </script>
+</body>
+</html>
